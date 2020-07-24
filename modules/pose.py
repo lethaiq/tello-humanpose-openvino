@@ -1,89 +1,93 @@
+import cv2
 import numpy as np
 
+from modules.one_euro_filter import OneEuroFilter
 
-_Nose = 0
-_Neck = 1
-_RShoulder = 2
-_RElbow = 3
-_RWrist = 4
-_LShoulder = 5
-_LElbow = 6
-_LWrist = 7
-_RHip = 8
-_RKnee = 9
-_RAnkle = 10
-_LHip = 11
-_LKnee = 12
-_LAnkle = 13
-_REye = 14
-_LEye = 15
-_REar = 16
-_LEar = 17
-
-body_kp_id_to_name = [
-    "Nose",
-    "Neck",
-    "RShoulder",
-    "RElbow",
-    "RWrist",
-    "LShoulder",
-    "LElbow",
-    "LWrist",
-    "RHip",
-    "RKnee",
-    "RAnkle",
-    "LHip",
-    "LKnee",
-    "LAnkle",
-    "REye",
-    "LEye",
-    "REar",
-    "LEar"
-]
-
-body_kp_name_to_id = {body_kp_id_to_name[i]: i for i in range(len(body_kp_id_to_name))}
-
-body_edges = np.array(
-    [[_Neck, _Nose], 
-     [_Nose, _LEye], [_LEye, _LEar], 
-     [_Nose, _REye], [_REye, _REar], 
-     [_Neck, _LShoulder], [_LShoulder, _LElbow], [_LElbow, _LWrist],   
-     [_Neck, _RShoulder], [_RShoulder, _RElbow], [_RElbow, _RWrist], 
-     [_Neck, _LHip], [_LHip, _LKnee], [_LKnee, _LAnkle],  
-     [_Neck, _RHip], [_RHip, _RKnee], [_RKnee, _RAnkle]])
 
 class Pose:
-    def __init__(self, array_55):
-        """
-        array_55 is a flat array with 54 elements represents 18 keypoint information (x, y, conf)
-        and 55th element is global conf
-        """
-        self.array_55 = array_55
+    num_kpts = 18
+    kpt_names = ['neck', 'nose',
+                 'l_sho', 'l_elb', 'l_wri', 'l_hip', 'l_knee', 'l_ank',
+                 'r_sho', 'r_elb', 'r_wri', 'r_hip', 'r_knee', 'r_ank',
+                 'r_eye', 'l_eye',
+                 'r_ear', 'l_ear']
+    sigmas = np.array([.79, .26, .79, .72, .62, 1.07, .87, .89, .79, .72, .62, 1.07, .87, .89, .25, .25, .35, .35],
+                      dtype=np.float32) / 10.0
+    vars = (sigmas * 2) ** 2
+    last_id = -1
+    color = [0, 224, 255]
 
-    def get_body_kp(self, kp_str):
-        kp_id = body_kp_name_to_id[kp_str]
-        assert kp_id >= 0 and kp_id < 18
-        kp_id *= 3
-        if self.array_55[kp_id + 2] < 0:
-            return None
-        else:
-            return (self.array_55[kp_id].astype(np.int32), self.array_55[kp_id + 1].astype(np.int32)) #, self.array_55[kp_id + 2])
+    def __init__(self, keypoints, confidence):
+        super().__init__()
+        self.keypoints = keypoints
+        self.confidence = confidence
+        found_keypoints = np.zeros((np.count_nonzero(keypoints[:, 0] != -1), 2), dtype=np.int32)
+        found_kpt_id = 0
+        for kpt_id in range(keypoints.shape[0]):
+            if keypoints[kpt_id, 0] == -1:
+                continue
+            found_keypoints[found_kpt_id] = keypoints[kpt_id]
+            found_kpt_id += 1
+        self.bbox = cv2.boundingRect(found_keypoints)
+        self.id = None
+        self.translation_filter = [OneEuroFilter(freq=80, beta=0.01),
+                                   OneEuroFilter(freq=80, beta=0.01),
+                                   OneEuroFilter(freq=80, beta=0.01)]
 
-class Poses:
-    def __init__(self, array_n_55):
-        """
-        array_n_55 is a 2d array with n is number of persons detected 
-        and 55 for the full description of a pose
-        """
-        self.poses = [ Pose(a) for a in array_n_55 ]
-        self.array_n_55 = array_n_55
+    def update_id(self, id=None):
+        self.id = id
+        if self.id is None:
+            self.id = Pose.last_id + 1
+            Pose.last_id += 1
 
-    def best(self):
-        """
-        When there are several persons detected, we want the one with the best confidence
-        """
-        if self.array_n_55.shape[0] == 0: # No person detected
-            return None
-        else:
-            id_best = np.argmax(self.array_n_55[:,54])
-            return self.poses[id_best]
+    def filter(self, translation):
+        filtered_translation = []
+        for coordinate_id in range(3):
+            filtered_translation.append(self.translation_filter[coordinate_id](translation[coordinate_id]))
+        return filtered_translation
+
+
+def get_similarity(a, b, threshold=0.5):
+    num_similar_kpt = 0
+    for kpt_id in range(Pose.num_kpts):
+        if a.keypoints[kpt_id, 0] != -1 and b.keypoints[kpt_id, 0] != -1:
+            distance = np.sum((a.keypoints[kpt_id] - b.keypoints[kpt_id]) ** 2)
+            area = max(a.bbox[2] * a.bbox[3], b.bbox[2] * b.bbox[3])
+            similarity = np.exp(-distance / (2 * (area + np.spacing(1)) * Pose.vars[kpt_id]))
+            if similarity > threshold:
+                num_similar_kpt += 1
+    return num_similar_kpt
+
+
+def propagate_ids(previous_poses, current_poses, threshold=3):
+    """Propagate poses ids from previous frame results. Id is propagated,
+    if there are at least `threshold` similar keypoints between pose from previous frame and current.
+
+    :param previous_poses: poses from previous frame with ids
+    :param current_poses: poses from current frame to assign ids
+    :param threshold: minimal number of similar keypoints between poses
+    :return: None
+    """
+    current_poses_sorted_ids = list(range(len(current_poses)))
+    current_poses_sorted_ids = sorted(
+        current_poses_sorted_ids, key=lambda pose_id: current_poses[pose_id].confidence, reverse=True)  # match confident poses first
+    mask = np.ones(len(previous_poses), dtype=np.int32)
+    for current_pose_id in current_poses_sorted_ids:
+        best_matched_id = None
+        best_matched_pose_id = None
+        best_matched_iou = 0
+        for previous_pose_id in range(len(previous_poses)):
+            if not mask[previous_pose_id]:
+                continue
+            iou = get_similarity(current_poses[current_pose_id], previous_poses[previous_pose_id])
+            if iou > best_matched_iou:
+                best_matched_iou = iou
+                best_matched_pose_id = previous_poses[previous_pose_id].id
+                best_matched_id = previous_pose_id
+        if best_matched_iou >= threshold:
+            mask[best_matched_id] = 0
+        else:  # pose not similar to any previous
+            best_matched_pose_id = None
+        current_poses[current_pose_id].update_id(best_matched_pose_id)
+        if best_matched_pose_id is not None:
+            current_poses[current_pose_id].translation_filter = previous_poses[best_matched_id].translation_filter

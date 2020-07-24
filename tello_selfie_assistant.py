@@ -15,7 +15,7 @@ from pynput import keyboard
 import argparse
 
 from math import pi, atan2
-from human_pose import *
+# from human_pose import *
 from math import atan2, degrees, sqrt
 from simple_pid import PID
 from multiprocessing import Process, Pipe, sharedctypes
@@ -77,7 +77,7 @@ def openpose_worker():
     tello.drone.start_recv_thread()
     if tello.use_sound: tello.init_sounds()
     tello.init_controls()
-    tello.op = HumanPose(device=tello.device, model_input_height=tello.model_input_height, color_palette="left_right")
+    # tello.op = HumanPose(device=tello.device, model_input_height=tello.model_input_height, color_palette="left_right")
 
     while True:
         tello.fps.update()
@@ -262,15 +262,13 @@ class TelloController(object):
 
                 
         # Setup HumanPose
-        if not self.use_multiprocessing:
-            
-            self.op = HumanPose(device=device, model_input_height=model_input_height, color_palette="left_right")
+        # if not self.use_multiprocessing:
+            # self.op = HumanPose(device=device, model_input_height=model_input_height, color_palette="left_right")
             # hp = HumanPose(model=args.model, 
             #         device=args.device, 
             #         model_input_height=args.height_size, 
             #         upsample_ratio=args.upsample_ratio)
         self.use_openpose = False
-                
              
         self.morse = CameraMorse(display=False)
         self.morse.define_command("---", self.delayed_takeoff)
@@ -530,78 +528,78 @@ class TelloController(object):
         self.key_listener.start()
 
      
-    def check_pose(self, skel, w, h):
-        """
-            Check if we detect a pose in the body detected by Openpose
-        """
+    # def check_pose(self, skel, w, h):
+    #     """
+    #         Check if we detect a pose in the body detected by Openpose
+    #     """
     
-        neck = skel.get_body_kp("Neck")
-        r_wrist = skel.get_body_kp("RWrist")
-        l_wrist = skel.get_body_kp("LWrist")
-        r_elbow = skel.get_body_kp("RElbow")
-        l_elbow = skel.get_body_kp("LElbow")
-        r_shoulder = skel.get_body_kp("RShoulder")
-        l_shoulder = skel.get_body_kp("LShoulder")
-        r_ear = skel.get_body_kp("REar")
-        l_ear = skel.get_body_kp("LEar") 
+    #     neck = skel.get_body_kp("Neck")
+    #     r_wrist = skel.get_body_kp("RWrist")
+    #     l_wrist = skel.get_body_kp("LWrist")
+    #     r_elbow = skel.get_body_kp("RElbow")
+    #     l_elbow = skel.get_body_kp("LElbow")
+    #     r_shoulder = skel.get_body_kp("RShoulder")
+    #     l_shoulder = skel.get_body_kp("LShoulder")
+    #     r_ear = skel.get_body_kp("REar")
+    #     l_ear = skel.get_body_kp("LEar") 
         
-        self.shoulders_width = distance(r_shoulder,l_shoulder) if r_shoulder and l_shoulder else None
+    #     self.shoulders_width = distance(r_shoulder,l_shoulder) if r_shoulder and l_shoulder else None
 
 
-        vert_angle_right_arm = vertical_angle(r_wrist, r_elbow)
-        vert_angle_left_arm = vertical_angle(l_wrist, l_elbow)
+    #     vert_angle_right_arm = vertical_angle(r_wrist, r_elbow)
+    #     vert_angle_left_arm = vertical_angle(l_wrist, l_elbow)
 
-        left_hand_up = neck and l_wrist and l_wrist[1] < neck[1]
-        right_hand_up = neck and r_wrist and r_wrist[1] < neck[1]
+    #     left_hand_up = neck and l_wrist and l_wrist[1] < neck[1]
+    #     right_hand_up = neck and r_wrist and r_wrist[1] < neck[1]
 
-        if right_hand_up:
-            if not left_hand_up:
-                # Only right arm up
-                if r_ear and (r_ear[0]-neck[0])*(r_wrist[0]-neck[0])>0:
-                # Right ear and right hand on the same side
-                    if vert_angle_right_arm:
-                        if vert_angle_right_arm < -15:
-                            return "RIGHT_ARM_UP_OPEN"
-                        if 15 < vert_angle_right_arm < 90:
-                            return "RIGHT_ARM_UP_CLOSED"
-                elif l_ear and self.shoulders_width: # and distance(r_wrist,l_ear) < self.shoulders_width/4:
-                    # Right hand close to left ear
-                    return "RIGHT_HAND_ON_LEFT_EAR"
-            else:
-                # Both hands up
-                # Check if both hands are on the ears
-                # if r_ear and l_ear:
-                #     ear_dist = distance(r_ear,l_ear)
-                #     if distance(r_wrist,r_ear)<ear_dist/3 and distance(l_wrist,l_ear)<ear_dist/3:
-                #         return("HANDS_ON_EARS")
-                # Check if boths hands are closed to each other and above ears 
-                # (check right hand is above right ear is enough since hands are closed to each other)
-                if self.shoulders_width and r_ear:
-                    near_dist = self.shoulders_width
-                    if r_ear[1] > r_wrist[1] and distance(r_wrist, l_wrist) < near_dist :
-                        return "CLOSE_HANDS_UP"
+    #     if right_hand_up:
+    #         if not left_hand_up:
+    #             # Only right arm up
+    #             if r_ear and (r_ear[0]-neck[0])*(r_wrist[0]-neck[0])>0:
+    #             # Right ear and right hand on the same side
+    #                 if vert_angle_right_arm:
+    #                     if vert_angle_right_arm < -15:
+    #                         return "RIGHT_ARM_UP_OPEN"
+    #                     if 15 < vert_angle_right_arm < 90:
+    #                         return "RIGHT_ARM_UP_CLOSED"
+    #             elif l_ear and self.shoulders_width: # and distance(r_wrist,l_ear) < self.shoulders_width/4:
+    #                 # Right hand close to left ear
+    #                 return "RIGHT_HAND_ON_LEFT_EAR"
+    #         else:
+    #             # Both hands up
+    #             # Check if both hands are on the ears
+    #             # if r_ear and l_ear:
+    #             #     ear_dist = distance(r_ear,l_ear)
+    #             #     if distance(r_wrist,r_ear)<ear_dist/3 and distance(l_wrist,l_ear)<ear_dist/3:
+    #             #         return("HANDS_ON_EARS")
+    #             # Check if boths hands are closed to each other and above ears 
+    #             # (check right hand is above right ear is enough since hands are closed to each other)
+    #             if self.shoulders_width and r_ear:
+    #                 near_dist = self.shoulders_width
+    #                 if r_ear[1] > r_wrist[1] and distance(r_wrist, l_wrist) < near_dist :
+    #                     return "CLOSE_HANDS_UP"
 
-        else:
-            if left_hand_up:
-                # Only left arm up
-                if l_ear and (l_ear[0]-neck[0])*(l_wrist[0]-neck[0])>0:
-                    # Left ear and left hand on the same side
-                    if vert_angle_left_arm:
-                        if vert_angle_left_arm < -15:
-                            return "LEFT_ARM_UP_CLOSED"
-                        if 15 < vert_angle_left_arm < 90:
-                            return "LEFT_ARM_UP_OPEN"
-                elif r_ear and self.shoulders_width: # and distance(l_wrist,r_ear) < self.shoulders_width/4:
-                    # Left hand close to right ear
-                    return "LEFT_HAND_ON_RIGHT_EAR"
-            else:
-                # Both wrists under the neck
-                if neck and self.shoulders_width and r_wrist and l_wrist:
-                    near_dist = self.shoulders_width/3
-                    if distance(r_wrist, neck) < near_dist and distance(l_wrist, neck) < near_dist :
-                        return "HANDS_ON_NECK"
+    #     else:
+    #         if left_hand_up:
+    #             # Only left arm up
+    #             if l_ear and (l_ear[0]-neck[0])*(l_wrist[0]-neck[0])>0:
+    #                 # Left ear and left hand on the same side
+    #                 if vert_angle_left_arm:
+    #                     if vert_angle_left_arm < -15:
+    #                         return "LEFT_ARM_UP_CLOSED"
+    #                     if 15 < vert_angle_left_arm < 90:
+    #                         return "LEFT_ARM_UP_OPEN"
+    #             elif r_ear and self.shoulders_width: # and distance(l_wrist,r_ear) < self.shoulders_width/4:
+    #                 # Left hand close to right ear
+    #                 return "LEFT_HAND_ON_RIGHT_EAR"
+    #         else:
+    #             # Both wrists under the neck
+    #             if neck and self.shoulders_width and r_wrist and l_wrist:
+    #                 near_dist = self.shoulders_width/3
+    #                 if distance(r_wrist, neck) < near_dist and distance(l_wrist, neck) < near_dist :
+    #                     return "HANDS_ON_NECK"
 
-        return None
+    #     return None
 
     def process_frame(self, raw_frame):
         """
@@ -652,145 +650,145 @@ class TelloController(object):
 
 
             # Call to openpose detection
-            if self.use_openpose:
+            # if self.use_openpose:
 
-                # nb_people, pose_kps, face_kps = self.op.eval(frame)
-                poses_2d = self.op.eval(frame)
-                skel = Poses(poses_2d).best()
+            #     # nb_people, pose_kps, face_kps = self.op.eval(frame)
+            #     poses_2d = self.op.eval(frame)
+            #     skel = Poses(poses_2d).best()
                 
-                target = None
+            #     target = None
                 
-                # Our target is the person whose index is 0 in pose_kps
-                self.pose = None
-                if skel is not None : 
-                    # We found a body, so we can cancel the exploring 360
-                    self.yaw_to_consume = 0
+            #     # Our target is the person whose index is 0 in pose_kps
+            #     self.pose = None
+            #     if skel is not None : 
+            #         # We found a body, so we can cancel the exploring 360
+            #         self.yaw_to_consume = 0
 
-                    # Do we recognize a predefined pose ?
-                    self.pose = self.check_pose(skel,w,h)
+            #         # Do we recognize a predefined pose ?
+            #         self.pose = self.check_pose(skel,w,h)
 
-                    if self.pose:
-                        # We trigger the associated action
-                        log.info(f"pose detected : {self.pose}")
-                        if self.pose == "HANDS_ON_NECK" or self.pose == "HANDS_ON_EARS":
-                            # Take a picture in 1 second
-                            if self.timestamp_take_picture is None:
-                                log.info("Take a picture in 1 second")
-                                self.timestamp_take_picture = time.time()
-                                if self.use_sound: self.sound_player.play("taking picture")
-                        elif self.pose == "RIGHT_ARM_UP_CLOSED":
-                            log.info("GOING LEFT from pose")
-                            self.axis_speed["roll"] = self.def_speed["roll"]
-                        elif self.pose == "RIGHT_ARM_UP_OPEN":
-                            log.info("GOING RIGHT from pose")
-                            self.axis_speed["roll"] = -self.def_speed["roll"]
-                        elif self.pose == "LEFT_ARM_UP_CLOSED":
-                            log.info("GOING FORWARD from pose")
-                            self.axis_speed["pitch"] = self.def_speed["pitch"]
-                        elif self.pose == "LEFT_ARM_UP_OPEN":
-                            log.info("GOING BACKWARD from pose")
-                            self.axis_speed["pitch"] = -self.def_speed["pitch"]
-                        elif self.pose == "CLOSE_HANDS_UP":
-                            # Locked distance mode
-                            if self.keep_distance is None:
-                                if  time.time() - self.timestamp_keep_distance > 2:
-                                    # The first frame of a serie to activate the distance keeping
-                                    self.keep_distance = self.shoulders_width
-                                    self.timestamp_keep_distance = time.time()
-                                    log.info(f"KEEP DISTANCE {self.keep_distance}")
-                                    self.pid_pitch = PID(0.5,0.04,0.3,setpoint=0,output_limits=(-50,50))
-                                    #self.graph_distance = RollingGraph(window_name="Distance", y_max=500, threshold=self.keep_distance, waitKey=False)
-                                    if self.use_sound: self.sound_player.play("keeping distance")
-                            else:
-                                if time.time() - self.timestamp_keep_distance > 2:
-                                    log.info("KEEP DISTANCE FINISHED")
-                                    if self.use_sound: self.sound_player.play("free")
-                                    self.keep_distance = None
-                                    self.timestamp_keep_distance = time.time()
+            #         if self.pose:
+            #             # We trigger the associated action
+            #             log.info(f"pose detected : {self.pose}")
+            #             if self.pose == "HANDS_ON_NECK" or self.pose == "HANDS_ON_EARS":
+            #                 # Take a picture in 1 second
+            #                 if self.timestamp_take_picture is None:
+            #                     log.info("Take a picture in 1 second")
+            #                     self.timestamp_take_picture = time.time()
+            #                     if self.use_sound: self.sound_player.play("taking picture")
+            #             elif self.pose == "RIGHT_ARM_UP_CLOSED":
+            #                 log.info("GOING LEFT from pose")
+            #                 self.axis_speed["roll"] = self.def_speed["roll"]
+            #             elif self.pose == "RIGHT_ARM_UP_OPEN":
+            #                 log.info("GOING RIGHT from pose")
+            #                 self.axis_speed["roll"] = -self.def_speed["roll"]
+            #             elif self.pose == "LEFT_ARM_UP_CLOSED":
+            #                 log.info("GOING FORWARD from pose")
+            #                 self.axis_speed["pitch"] = self.def_speed["pitch"]
+            #             elif self.pose == "LEFT_ARM_UP_OPEN":
+            #                 log.info("GOING BACKWARD from pose")
+            #                 self.axis_speed["pitch"] = -self.def_speed["pitch"]
+            #             elif self.pose == "CLOSE_HANDS_UP":
+            #                 # Locked distance mode
+            #                 if self.keep_distance is None:
+            #                     if  time.time() - self.timestamp_keep_distance > 2:
+            #                         # The first frame of a serie to activate the distance keeping
+            #                         self.keep_distance = self.shoulders_width
+            #                         self.timestamp_keep_distance = time.time()
+            #                         log.info(f"KEEP DISTANCE {self.keep_distance}")
+            #                         self.pid_pitch = PID(0.5,0.04,0.3,setpoint=0,output_limits=(-50,50))
+            #                         #self.graph_distance = RollingGraph(window_name="Distance", y_max=500, threshold=self.keep_distance, waitKey=False)
+            #                         if self.use_sound: self.sound_player.play("keeping distance")
+            #                 else:
+            #                     if time.time() - self.timestamp_keep_distance > 2:
+            #                         log.info("KEEP DISTANCE FINISHED")
+            #                         if self.use_sound: self.sound_player.play("free")
+            #                         self.keep_distance = None
+            #                         self.timestamp_keep_distance = time.time()
                             
-                        elif self.pose == "RIGHT_HAND_ON_LEFT_EAR":
-                            # Get close to the body then palm landing
-                            if not self.palm_landing_approach:
-                                self.palm_landing_approach = True
-                                self.keep_distance = proximity
-                                self.timestamp_keep_distance = time.time()
-                                log.info("APPROACHING on pose")
-                                self.pid_pitch = PID(0.2,0.02,0.1,setpoint=0,output_limits=(-45,45))
-                                #self.graph_distance = RollingGraph(window_name="Distance", y_max=500, threshold=self.keep_distance, waitKey=False)
-                                if self.use_sound: self.sound_player.play("approaching")
-                        elif self.pose == "LEFT_HAND_ON_RIGHT_EAR":
-                            if not self.palm_landing:
-                                log.info("LANDING on pose")
-                                # Landing
-                                self.toggle_tracking(tracking=False)
-                                self.drone.land()      
+            #             elif self.pose == "RIGHT_HAND_ON_LEFT_EAR":
+            #                 # Get close to the body then palm landing
+            #                 if not self.palm_landing_approach:
+            #                     self.palm_landing_approach = True
+            #                     self.keep_distance = proximity
+            #                     self.timestamp_keep_distance = time.time()
+            #                     log.info("APPROACHING on pose")
+            #                     self.pid_pitch = PID(0.2,0.02,0.1,setpoint=0,output_limits=(-45,45))
+            #                     #self.graph_distance = RollingGraph(window_name="Distance", y_max=500, threshold=self.keep_distance, waitKey=False)
+            #                     if self.use_sound: self.sound_player.play("approaching")
+            #             elif self.pose == "LEFT_HAND_ON_RIGHT_EAR":
+            #                 if not self.palm_landing:
+            #                     log.info("LANDING on pose")
+            #                     # Landing
+            #                     self.toggle_tracking(tracking=False)
+            #                     self.drone.land()      
 
-                    # Draw the skeleton on the frame
-                    self.op.draw(frame, poses_2d)
+            #         # Draw the skeleton on the frame
+            #         self.op.draw(frame, poses_2d)
                     
-                    # In tracking mode, we track a specific body part (an openpose keypoint):
-                    # the nose if visible, otherwise the neck, otherwise the midhip
-                    # The tracker tries to align that body part with the reference point (ref_x, ref_y)
-                    target = skel.get_body_kp("Nose")
-                    if target is not None:        
-                        ref_x = int(w/2)
-                        ref_y = int(h*0.35)
-                    else:
-                        target = skel.get_body_kp("Neck")
-                        if target is not None:         
-                            ref_x = int(w/2)
-                            ref_y = int(h/2)
-                        else:
-                            target = skel.get_body_kp("RHip")
-                            if target is not None:         
-                                ref_x = int(w/2)
-                                ref_y = int(0.75*h)
+            #         # In tracking mode, we track a specific body part (an openpose keypoint):
+            #         # the nose if visible, otherwise the neck, otherwise the midhip
+            #         # The tracker tries to align that body part with the reference point (ref_x, ref_y)
+            #         target = skel.get_body_kp("Nose")
+            #         if target is not None:        
+            #             ref_x = int(w/2)
+            #             ref_y = int(h*0.35)
+            #         else:
+            #             target = skel.get_body_kp("Neck")
+            #             if target is not None:         
+            #                 ref_x = int(w/2)
+            #                 ref_y = int(h/2)
+            #             else:
+            #                 target = skel.get_body_kp("RHip")
+            #                 if target is not None:         
+            #                     ref_x = int(w/2)
+            #                     ref_y = int(0.75*h)
                     
 
-                if self.tracking:
-                    if target:
-                        self.body_in_prev_frame = True
-                        # We draw an arrow from the reference point to the body part we are targeting       
-                        h,w,_ = frame.shape
-                        xoff = int(target[0]-ref_x)
-                        yoff = int(ref_y-target[1])
-                        cv2.circle(frame, (ref_x, ref_y), 15, (250,150,0), 1,cv2.LINE_AA)
-                        cv2.arrowedLine(frame, (ref_x, ref_y), target, (250, 150, 0), 6)
+            #     if self.tracking:
+            #         if target:
+            #             self.body_in_prev_frame = True
+            #             # We draw an arrow from the reference point to the body part we are targeting       
+            #             h,w,_ = frame.shape
+            #             xoff = int(target[0]-ref_x)
+            #             yoff = int(ref_y-target[1])
+            #             cv2.circle(frame, (ref_x, ref_y), 15, (250,150,0), 1,cv2.LINE_AA)
+            #             cv2.arrowedLine(frame, (ref_x, ref_y), target, (250, 150, 0), 6)
                        
-                        # The PID controllers calculate the new speeds for yaw and throttle
-                        self.axis_speed["yaw"] = int(-self.pid_yaw(xoff))
-                        log.debug(f"xoff: {xoff} - speed_yaw: {self.axis_speed['yaw']}")
-                        self.last_rotation_is_cw = self.axis_speed["yaw"] > 0
+            #             # The PID controllers calculate the new speeds for yaw and throttle
+            #             self.axis_speed["yaw"] = int(-self.pid_yaw(xoff))
+            #             log.debug(f"xoff: {xoff} - speed_yaw: {self.axis_speed['yaw']}")
+            #             self.last_rotation_is_cw = self.axis_speed["yaw"] > 0
 
-                        self.axis_speed["throttle"] = int(-self.pid_throttle(yoff))
-                        log.debug(f"yoff: {yoff} - speed_throttle: {self.axis_speed['throttle']}")
+            #             self.axis_speed["throttle"] = int(-self.pid_throttle(yoff))
+            #             log.debug(f"yoff: {yoff} - speed_throttle: {self.axis_speed['throttle']}")
 
-                        # If in locke distance mode
-                        if self.keep_distance and self.shoulders_width:   
-                            if self.palm_landing_approach and self.shoulders_width>self.keep_distance:
-                                # The drone is now close enough to the body
-                                # Let's do the palm landing
-                                log.info("PALM LANDING after approaching")
-                                self.palm_landing_approach = False
-                                self.toggle_tracking(tracking=False)
-                                self.palm_land() 
-                            else:
-                                self.axis_speed["pitch"] = int(self.pid_pitch(self.shoulders_width-self.keep_distance))
-                                log.debug(f"Target distance: {self.keep_distance} - cur: {self.shoulders_width} -speed_pitch: {self.axis_speed['pitch']}")
-                    else: # Tracking but no body detected
-                        if self.body_in_prev_frame:
-                            self.timestamp_no_body = time.time()
-                            self.body_in_prev_frame = False
-                            self.axis_speed["throttle"] = self.prev_axis_speed["throttle"]
-                            self.axis_speed["yaw"] = self.prev_axis_speed["yaw"]
-                        else:
-                            if time.time() - self.timestamp_no_body < 1:
-                                log.debug("NO BODY SINCE < 1", self.axis_speed, self.prev_axis_speed)
-                                self.axis_speed["throttle"] = self.prev_axis_speed["throttle"]
-                                self.axis_speed["yaw"] = self.prev_axis_speed["yaw"]
-                            else:
-                                log.debug("NO BODY detected for 1s -> rotate")
-                                self.axis_speed["yaw"] = self.def_speed["yaw"] * (1 if self.last_rotation_is_cw else -1)
+            #             # If in locke distance mode
+            #             if self.keep_distance and self.shoulders_width:   
+            #                 if self.palm_landing_approach and self.shoulders_width>self.keep_distance:
+            #                     # The drone is now close enough to the body
+            #                     # Let's do the palm landing
+            #                     log.info("PALM LANDING after approaching")
+            #                     self.palm_landing_approach = False
+            #                     self.toggle_tracking(tracking=False)
+            #                     self.palm_land() 
+            #                 else:
+            #                     self.axis_speed["pitch"] = int(self.pid_pitch(self.shoulders_width-self.keep_distance))
+            #                     log.debug(f"Target distance: {self.keep_distance} - cur: {self.shoulders_width} -speed_pitch: {self.axis_speed['pitch']}")
+            #         else: # Tracking but no body detected
+            #             if self.body_in_prev_frame:
+            #                 self.timestamp_no_body = time.time()
+            #                 self.body_in_prev_frame = False
+            #                 self.axis_speed["throttle"] = self.prev_axis_speed["throttle"]
+            #                 self.axis_speed["yaw"] = self.prev_axis_speed["yaw"]
+            #             else:
+            #                 if time.time() - self.timestamp_no_body < 1:
+            #                     log.debug("NO BODY SINCE < 1", self.axis_speed, self.prev_axis_speed)
+            #                     self.axis_speed["throttle"] = self.prev_axis_speed["throttle"]
+            #                     self.axis_speed["yaw"] = self.prev_axis_speed["yaw"]
+            #                 else:
+            #                     log.debug("NO BODY detected for 1s -> rotate")
+            #                     self.axis_speed["yaw"] = self.def_speed["yaw"] * (1 if self.last_rotation_is_cw else -1)
 
         # Send axis commands to the drone
         for axis, command in self.axis_command.items():
